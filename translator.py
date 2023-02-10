@@ -1,7 +1,6 @@
-import sys
 import requests
 from bs4 import BeautifulSoup
-
+import sys
 
 class Translator:
     ALL_LANGUAGES = ('Arabic', 'German', 'English', 'Spanish', 'French', 'Hebrew', 'Japanese',
