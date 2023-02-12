@@ -2,34 +2,46 @@ import requests
 from bs4 import BeautifulSoup
 import sys
 
+
+class UndetectedLanguage(Exception):
+    pass
+
+
+class NotConnection(Exception):
+    pass
+
+
+class UndetectedWord(Exception):
+    pass
+
+
 class Translator:
-    ALL_LANGUAGES = ('Arabic', 'German', 'English', 'Spanish', 'French', 'Hebrew', 'Japanese',
-                     'Dutch', 'Polish', 'Portuguese', 'Romanian', 'Russian', 'Turkish',
-                     )
 
-    HEADERS = {"user-agent": "Mozilla/5.0",
-               }
-
-    URL = "https://context.reverso.net/translation"
-
-    def __init__(self, lang_in, lang_out, word):
+    def __init__(self, lang_in, lang_out, word_t, all_languages_t, headers_t, url_t):
         self.lang_in = lang_in
         self.lang_out = lang_out
-        self.word = word
+        self.word = word_t
+        self.all_languages = all_languages_t
+        self.headers = headers_t
+        self.URL = url_t
 
-    def translate_all_language(self):
-        for language in self.ALL_LANGUAGES:
-            if language.lower() != self.lang_in:
-                self.lang_out = language
+    def translate_all_languages(self):
+        for language in self.all_languages:
+            if language.lower() not in (self.lang_in, 'all'):
+                self.lang_out = language.lower()
                 self.translate(1)
 
     def _get_bs_req(self):
         url = self.URL
-        lang_in = self.lang_in.lower()
-        lang_out = self.lang_out.lower()
-        word_tr = self.word.lower()
-        headers = self.HEADERS
-        request = requests.get(f"{url}/{lang_in}-{lang_out}/{word_tr}", headers=headers)
+        lang_in = self.lang_in
+        lang_out = self.lang_out
+        word_tr = self.word
+        headers_get = self.headers
+        request = requests.get(f"{url}/{lang_in}-{lang_out}/{word_tr}", headers=headers_get)
+        if request.status_code == 404:
+            raise UndetectedWord
+        elif request.status_code == 500:
+            raise NotConnection('Something wrong with your internet connection')
         return BeautifulSoup(request.text, 'lxml')
 
     def _write_in_file(self, sentences):
@@ -65,16 +77,44 @@ def show_file(file_name):
             print(line.strip())
 
 
-args = sys.argv
-in_lang, to_lang, word = args[1:]
-translator = Translator(in_lang, to_lang, word)
+def write_in_file(word):
+    with open(f'{word}.txt', 'w', encoding='utf-8') as w:
+        w.write('')
 
-with open(f'{word}.txt', 'w', encoding='utf-8') as w:
-    w.write('')
 
-if to_lang == 'all':
-    translator.translate_all_language()
-else:
-    translator.translate()
+def check_lang(*args):
+    for lang in args:
+        if lang.capitalize() not in all_languages:
+            raise UndetectedLanguage(f"Sorry, the program doesn't support {lang}")
 
-show_file(translator.word)
+
+def enter_data():
+    args = sys.argv
+    in_lang, to_lang, word = map(lambda x: x.lower(), args[1:])
+    try:
+        check_lang(in_lang, to_lang)
+        translator = Translator(in_lang, to_lang, word, all_languages, headers, URL)
+        write_in_file(word)
+
+        if to_lang == 'all':
+            translator.translate_all_languages()
+        else:
+            translator.translate()
+
+        show_file(translator.word)
+    except UndetectedWord:
+        print(f'Sorry, unable to find {word}')
+    except (UndetectedLanguage, NotConnection) as err:
+        print(err)
+
+
+all_languages = ('Arabic', 'German', 'English', 'Spanish', 'French', 'Hebrew', 'Japanese',
+                 'Dutch', 'Polish', 'Portuguese', 'Romanian', 'Russian', 'Turkish', 'All'
+                 )
+
+headers = {"user-agent": "Mozilla/5.0",
+           }
+
+URL = "https://context.reverso.net/translation"
+
+enter_data()
