@@ -117,4 +117,6 @@ headers = {"user-agent": "Mozilla/5.0",
 
 URL = "https://context.reverso.net/translation"
 
-enter_data()
+
+if __name__ == '__main__':
+    enter_data()
